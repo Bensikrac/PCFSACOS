@@ -20,5 +20,5 @@
    - UI Layer: custom themes and other customization
    - Message Layer: Messaging between used Plugins
 
-##Who?
+## Who?
   It is currently only a very experimental test developed occasionally by me. Don't expect anything fancy. If you want to contribute of some reason contact me somehow.
