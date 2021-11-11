@@ -4,7 +4,7 @@
 - Build a Plugin container where you can install custom plugins made by others
 - Full name: Plugin Container For Social And Communication Open Source (Subject to change)
 
-## Preffered Features
+## Preferred Features
   - Must be Open Source
   - Anybody should be able to make plugins without any restrictions.
   - Highly customizable and privacy oriented -->No collection of personal data by the core app and core plugins if not needed, custom plugins may collect data.
