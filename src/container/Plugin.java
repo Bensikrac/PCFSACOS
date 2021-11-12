@@ -5,4 +5,5 @@ public interface Plugin {
 	public void run();
 	public void unload();
 	public PluginType getType();
+	public String getName();
 }

@@ -15,6 +15,12 @@ public class DefaultTransfer implements Plugin {
 	public void load() {
 		
 	}
+
+	@Override
+	public String getName() {
+		// TODO Auto-generated method stub
+		return "Transfer_Default";
+	}
 	
 
 }
