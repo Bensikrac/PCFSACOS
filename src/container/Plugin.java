@@ -6,4 +6,5 @@ public interface Plugin {
 	public void unload();
 	public PluginType getType();
 	public String getName();
+	public boolean processMessage(Message m);
 }

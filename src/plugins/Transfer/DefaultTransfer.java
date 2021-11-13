@@ -2,6 +2,10 @@ package plugins.Transfer;
 import container.*;
 
 public class DefaultTransfer implements Plugin {
+	public DefaultTransfer(PluginManager pluginManager) {
+		// TODO Auto-generated constructor stub
+	}
+
 	public PluginType getType() {
 		return PluginType.Transfer;
 	}
@@ -20,6 +24,12 @@ public class DefaultTransfer implements Plugin {
 	public String getName() {
 		// TODO Auto-generated method stub
 		return "Transfer_Default";
+	}
+
+	@Override
+	public boolean processMessage(Message m) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 	
 

@@ -9,6 +9,10 @@ public class DefaultStorage implements Plugin {
 	private Path configfile;
 	
 	
+	public DefaultStorage(PluginManager pluginManager) {
+		// TODO Auto-generated constructor stub
+	}
+
 	public PluginType getType() {
 		return PluginType.Storage;
 	}
@@ -56,5 +60,11 @@ public class DefaultStorage implements Plugin {
 	@Override
 	public String getName() {
 		return "Storage_Default";
+	}
+
+	@Override
+	public boolean processMessage(Message m) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 }

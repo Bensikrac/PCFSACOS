@@ -3,6 +3,7 @@ package container;
 import java.util.ArrayList;
 import plugins.Storage.DefaultStorage;
 import plugins.Transfer.DefaultTransfer;
+import plugins.UI.DefaultUI;
 
 public class PluginManager { //Manage Plugins load unload error messages interplugin messaging
 	private ArrayList<Plugin> list = new ArrayList<Plugin>();
@@ -22,7 +23,7 @@ public class PluginManager { //Manage Plugins load unload error messages interpl
 			}
 		}
 		if(!found) {
-			throw new Exception(ExType.Plugin_Notfound.toString());
+			throw new Exception(ExType.Plugin_Notfound.toString()); //if not found in case of default plugins something is wrong.
 		}
 		return pfound;
 	}
@@ -36,12 +37,27 @@ public class PluginManager { //Manage Plugins load unload error messages interpl
 		return log;
 	}
 	
+	public boolean isPluginExistent(String pluginname) {//search for other custom plugins
+		boolean pfound = false;
+		for(Plugin p : list) {
+			if(p.getName().equals(pluginname)) {
+				pfound = true;
+			}
+		}
+		return pfound;
+	}
+	
+	public void sendMessage(Message m) throws Exception {
+		getPlugin(m.getTo()).processMessage(m);
+	}
+	
 	private void loadDefaultPlugins() throws Exception{
 		Plugin defaults[] = new Plugin[6];
 		//TODO insert all other default plugins
 		
-		defaults[0] = new DefaultStorage();
-		defaults[1] = new DefaultTransfer();
+		defaults[0] = new DefaultStorage(this);
+		defaults[1] = new DefaultTransfer(this);
+		defaults[2] = new DefaultUI(this);
 		
 		for(Plugin p : defaults) {
 			if(p != null) {

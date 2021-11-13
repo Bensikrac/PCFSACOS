@@ -1,6 +1,8 @@
 package container;
 import java.util.ServiceLoader;
 
+import javax.swing.JOptionPane;
+
 import plugins.Storage.*;
 public class Main {
 
@@ -26,10 +28,12 @@ public class Main {
 		try {
 			p.loadPlugins();
 		}
-		catch(Exception e) {
-			System.out.println(e);
+		catch(Exception e1) {
+			System.out.println(e1);
 		}
-		System.out.println(p.getLog());
+		
+		
+		
 		
 		
 	}
