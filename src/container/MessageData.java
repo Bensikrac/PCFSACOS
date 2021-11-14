@@ -7,5 +7,9 @@ public class MessageData {
 		this.data = msg;
 		//TODO add more types of data if needed
 	}
+	
+	public Object getData() {
+		return data;
+	}
 
 }

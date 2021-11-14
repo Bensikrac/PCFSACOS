@@ -7,9 +7,12 @@ import java.util.Properties;
 import container.*;
 public class DefaultStorage implements Plugin {
 	private Path configfile;
+	private PluginManager p;
 	
 	
 	public DefaultStorage(PluginManager pluginManager) {
+		this.p = pluginManager;
+		
 		// TODO Auto-generated constructor stub
 	}
 
@@ -38,6 +41,7 @@ public class DefaultStorage implements Plugin {
 		
 		
 		if(encrypted.equals("true") && encryptionkey == null) {
+			p.sendMessage(new Message(MsgType.Request, this, p.getPlugin("UI_Default"), MsgContent.UI_Popout_Input, new MessageData("Enter Your Password")));
 			System.out.println("Enter Encryption Key please");
 			return; //not yet implemented what happens if config file is encrypted without stored key
 		}

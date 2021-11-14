@@ -20,6 +20,7 @@ public class PluginManager { //Manage Plugins load unload error messages interpl
 		for(Plugin p : list) {
 			if(p.getName().equals(Pluginname)) {
 				pfound = p;
+				found = true;
 			}
 		}
 		if(!found) {
@@ -48,16 +49,17 @@ public class PluginManager { //Manage Plugins load unload error messages interpl
 	}
 	
 	public void sendMessage(Message m) throws Exception {
-		getPlugin(m.getTo()).processMessage(m);
+		m.getTo().processMessage(m);
 	}
 	
 	private void loadDefaultPlugins() throws Exception{
 		Plugin defaults[] = new Plugin[6];
 		//TODO insert all other default plugins
 		
-		defaults[0] = new DefaultStorage(this);
-		defaults[1] = new DefaultTransfer(this);
-		defaults[2] = new DefaultUI(this);
+		defaults[0] = new DefaultUI(this);
+		defaults[1] = new DefaultStorage(this);
+		defaults[2] = new DefaultTransfer(this);
+		
 		
 		for(Plugin p : defaults) {
 			if(p != null) {
