@@ -29,6 +29,9 @@ public class DefaultStorage implements Plugin {
 		Path initpath = Path.of("init.conf");
 		boolean exists = Files.exists(initpath);
 		if(!exists) {
+			p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("Default_UI"),MsgContent.UI_Popout_YesNo,new MessageData("INIT config is missing! create new?")));
+			
+			//TODO fix recreation after message recieve
 			throw new Exception(ExType.File_Init_Notfound.toString());
 		}
 		Properties initconf = new Properties();
@@ -42,7 +45,6 @@ public class DefaultStorage implements Plugin {
 		
 		if(encrypted.equals("true") && encryptionkey == null) {
 			p.sendMessage(new Message(MsgType.Request, this, p.getPlugin("UI_Default"), MsgContent.UI_Popout_Input, new MessageData("Enter Your Password")));
-			System.out.println("Enter Encryption Key please");
 			return; //not yet implemented what happens if config file is encrypted without stored key
 		}
 		

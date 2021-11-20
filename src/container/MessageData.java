@@ -8,6 +8,10 @@ public class MessageData {
 		//TODO add more types of data if needed
 	}
 	
+	public MessageData(boolean b) {
+		this.data = b;
+	}
+	
 	public Object getData() {
 		return data;
 	}

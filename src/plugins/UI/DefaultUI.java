@@ -64,6 +64,17 @@ public class DefaultUI implements Plugin {
 				String input =JOptionPane.showInputDialog(null,m.getDataObject().getData());
 				p.sendMessage(new Message(MsgType.Response, this, m.getFrom(),MsgContent.UI_Popout_Response, new MessageData(input))); //return popout data
 				break;
+			case UI_Popout_YesNo:
+				int n = JOptionPane.showConfirmDialog(null, "Confirm?",(String)m.getDataObject().getData(), JOptionPane.YES_NO_OPTION);
+				MessageData mdata = null;
+				if(n == JOptionPane.YES_OPTION) {
+					mdata = new MessageData(true);
+				}
+				else {
+					mdata = new MessageData(false);
+				}
+				p.sendMessage(new Message(MsgType.Response, this, m.getFrom(), MsgContent.UI_Popout_Response, mdata));
+				break;
 			default:
 				throw new Exception(ExType.MsgContent_Unknown.toString());
 			
