@@ -48,50 +48,57 @@ public class DefaultUI implements Plugin {
 	}
 
 	@Override
-	public boolean processMessage(Message m) throws Exception {
-		//switch if request or data
+	public Object processMessage(Message m) throws Exception { //return object is used for Result returning, if invoked from init method.
+		//switch if request or data Should maybe split in submethods of object for readability
 		MsgType t = m.getType();
 		switch(t) {
 		case Data:
-			break;
+			return processMessageData(m);
 		case Request:
-			MsgContent c = m.getContent();
-			switch(c) {
-			case UI_Popout_Error:
-				JOptionPane.showMessageDialog(null, m.getDataObject().getData(),"Error", JOptionPane.ERROR_MESSAGE);
-				break;
-			case UI_Popout_Input:
-				String input =JOptionPane.showInputDialog(null,m.getDataObject().getData());
-				p.sendMessage(new Message(MsgType.Response, this, m.getFrom(),MsgContent.UI_Popout_Response, new MessageData(input))); //return popout data
-				break;
-			case UI_Popout_YesNo:
-				int n = JOptionPane.showConfirmDialog(null, "Confirm?",(String)m.getDataObject().getData(), JOptionPane.YES_NO_OPTION);
-				MessageData mdata = null;
-				if(n == JOptionPane.YES_OPTION) {
-					mdata = new MessageData(true);
-				}
-				else {
-					mdata = new MessageData(false);
-				}
-				p.sendMessage(new Message(MsgType.Response, this, m.getFrom(), MsgContent.UI_Popout_Response, mdata));
-				break;
-			default:
-				throw new Exception(ExType.MsgContent_Unknown.toString());
-			
-			}
-			
-			
-		
-			
-		break;
+			return processMessageRequest(m);
 		default:
 			throw new Exception(ExType.MsgType_Unknown.toString());
 		}
-		
-		
-		
-		// TODO Auto-generated method stub
-		return false;
 	}
-
+	
+	private Object processMessageData(Message m) throws Exception{
+		//TODO create function
+		return null;
+	}
+	
+	private Object processMessageRequest(Message m) throws Exception { //maybe split further
+		MsgContent c = m.getContent();
+		switch(c) {
+		case UI_Popout_Error:
+		case UI_Popout_Input:
+		case UI_Popout_Response:
+		case UI_Popout_YesNo:
+			return processPopout(m);
+		default:
+			return null;
+		}
+	}
+	
+	private Object processPopout(Message m) throws Exception{
+		MsgContent c = m.getContent();
+		switch(c) {
+			case UI_Popout_Error:
+				JOptionPane.showMessageDialog(null, m.getDataObject().getData(),"Error", JOptionPane.ERROR_MESSAGE);
+			break;
+			case UI_Popout_Input:
+				String input =JOptionPane.showInputDialog(null,m.getDataObject().getData());
+				return input; //return popout data
+			case UI_Popout_YesNo:
+				int n = JOptionPane.showConfirmDialog(null, "Confirm?",(String)m.getDataObject().getData(), JOptionPane.YES_NO_OPTION);
+				boolean mdata = false;
+				if(n == JOptionPane.YES_OPTION) {
+					mdata = true;
+				}
+				return mdata;
+			default:
+			throw new Exception(ExType.MsgContent_Unknown.toString());
+		}
+		return null;
+	}
+	
 }

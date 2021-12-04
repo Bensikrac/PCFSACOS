@@ -48,8 +48,8 @@ public class PluginManager { //Manage Plugins load unload error messages interpl
 		return pfound;
 	}
 	
-	public void sendMessage(Message m) throws Exception {
-		m.getTo().processMessage(m);
+	public Object sendMessage(Message m) throws Exception {
+		return m.getTo().processMessage(m);
 	}
 	
 	private void loadDefaultPlugins() throws Exception{

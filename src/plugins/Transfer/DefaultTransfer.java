@@ -27,7 +27,7 @@ public class DefaultTransfer implements Plugin {
 	}
 
 	@Override
-	public boolean processMessage(Message m) {
+	public Object processMessage(Message m) {
 		// TODO Auto-generated method stub
 		return false;
 	}
