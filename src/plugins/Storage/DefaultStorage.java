@@ -1,15 +1,26 @@
 package plugins.Storage;
 import java.io.File;
 import java.io.FileInputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.Key;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.security.spec.KeySpec;
 import java.util.Properties;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 
 import container.*;
 public class DefaultStorage implements Plugin {
-	private Path configfile;
+	private String configfile;
 	private PluginManager p;
 	private Properties settings; //for decrypted config file
 	
@@ -60,25 +71,69 @@ public class DefaultStorage implements Plugin {
 		FileInputStream fis = new FileInputStream("init.conf");
 		initconf.load(fis);
 		
-		configfile = Path.of(initconf.getProperty("configlocation")); //read settings
+		configfile = initconf.getProperty("configlocation"); //read settings
 		String encrypted = initconf.getProperty("encrypted");
 		String encryptionkey = initconf.getProperty("EncryptionKey"); //check if encrypted 
-		//TODO include encryption algorithm change
 		
-		
-		if(encrypted.equals("true") && encryptionkey == null) {
-			String returned = (String)p.sendMessage(new Message(MsgType.Request, this, p.getPlugin("UI_Default"), MsgContent.UI_Popout_Input, new MessageData("Enter Your Password")));
-			Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding"); //not secure I guess maybe make settable in settings or something
-			cipher.init(Cipher.DECRYPT_MODE, returned);
-			
-			return; 
-		}
-		
-		
-		exists = Files.exists(configfile); //check if config file is there
+		exists = Files.exists(Path.of(configfile)); //check if config file is there
 		if(!exists) { 
 			throw new Exception(ExType.File_Config_Notfound.toString());
 		}
+		
+		
+		
+		
+		if(encrypted.equals("true")) { //create object for config file reading if encrypted
+			String result = "";
+			if(encryptionkey == null) {
+				byte[] encodedhash = null;
+				String returned = (String)p.sendMessage(new Message(MsgType.Request, this, p.getPlugin("UI_Default"), MsgContent.UI_Popout_Input, new MessageData("Enter Your Password")));
+				MessageDigest digest = MessageDigest.getInstance("SHA-256");
+				encodedhash = digest.digest(returned.getBytes(StandardCharsets.UTF_8));
+				StringBuilder hexString = new StringBuilder(2 * encodedhash.length); //copied from https://www.baeldung.com/sha-256-hashing-java
+			    for (int i = 0; i < encodedhash.length; i++) {
+			        String hex = Integer.toHexString(0xff & encodedhash[i]);
+			        if(hex.length() == 1) {
+			            hexString.append('0'); 
+			        }
+			        hexString.append(hex);
+			    }
+			    result = hexString.toString();
+			}
+			else {
+				result = initconf.getProperty("EncryptionKey");
+			}
+			
+			
+			SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256"); //got from https://www.baeldung.com/java-aes-encryption-decryption
+		    KeySpec spec = new PBEKeySpec(result.toCharArray(), result.getBytes(), 65536, 256);
+		    SecretKey secret = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES"); //TODO include encryption algorithm change
+		    
+		    byte[] iv = new byte[16];
+		    SecureRandom secure = new SecureRandom();
+		    secure.nextBytes(iv);
+		    
+		    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+			
+			try{
+				FileInputStream fileIn = new FileInputStream(configfile);
+				byte[] fileIv = new byte[16];
+				fileIn.read(fileIv);
+				cipher.init(Cipher.DECRYPT_MODE, secret, new IvParameterSpec(fileIv));
+				CipherInputStream cipherIn = new CipherInputStream(fileIn, cipher);
+				settings = new Properties();
+				settings.load(cipherIn);
+			}
+			catch(Exception e) {
+				System.out.println(e);
+			}
+		}
+		else {
+			settings = new Properties();
+			settings.load(new FileInputStream(configfile));
+		}
+		System.out.println(settings.getProperty("test"));
+		settings.setProperty("test", "true");
 	}
 	
 	public void run() {
