@@ -47,7 +47,7 @@ public class DefaultStorage implements Plugin {
 			boolean returned = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("Default_UI"),MsgContent.UI_Popout_YesNo,new MessageData("INIT config is missing! create new?")));
 			if(returned) {
 				try {
-				      File myObj = new File("init.conf"); //whacky copy paste code do not understand really 
+				      new File("init.conf"); //whacky copy paste code do not understand really 
 				      FileInputStream fis = new FileInputStream("init.conf");
 				      Properties initconf = new Properties();
 				      initconf.load(fis);
