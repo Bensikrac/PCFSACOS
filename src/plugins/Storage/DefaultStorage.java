@@ -1,21 +1,20 @@
 package plugins.Storage;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.AlgorithmParameters;
 import java.security.MessageDigest;
-import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import java.util.Properties;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.IvParameterSpec;
@@ -28,12 +27,11 @@ public class DefaultStorage implements Plugin {
 	private PluginManager p;
 	private Properties settings; //for decrypted config file
 	private final String initfile = "init.conf";
+	private OutputStream configout;
 	
 	
 	public DefaultStorage(PluginManager pluginManager) {
 		this.p = pluginManager;
-		
-		// TODO Auto-generated constructor stub
 	}
 
 	public PluginType getType() {
@@ -45,44 +43,28 @@ public class DefaultStorage implements Plugin {
 	}
 	
 	public void load() throws Exception {
-		//First get config file location from programm location
+		//check if init file exists and recreate if needed
 		Path initpath = Path.of(initfile);
 		boolean exists = Files.exists(initpath);
 		if(!exists) {
-			boolean returned = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_YesNo,new MessageData("INIT config is missing! create new?")));
-			if(returned) {
-				this.recreateInitFile();
-			}
-			else {
-				throw new Exception(ExType.File_Init_Notfound.toString());
-			}
+			recreateInitFile();
 		}
 		
 		//now read encryption and decrypt file
-		Properties initconf = new Properties(); //properties object (property = value in file parser)
+		Properties initconf = new Properties();
 		FileInputStream fis = new FileInputStream(initfile);
-		
+		settings = new Properties();
 		initconf.load(fis);
-		
 		configfile = initconf.getProperty("configlocation"); //read settings
 		String encrypted = initconf.getProperty("encrypted");
 		String encryptionkey = initconf.getProperty("EncryptionKey"); //check if encrypted 
 		
 		exists = Files.exists(Path.of(configfile)); //check if config file is there
 		if(!exists) { 
-			boolean returned = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_YesNo,new MessageData("Config File missing. Crete new?")));
-			if(!returned) {
-				throw new Exception(ExType.File_Config_Notfound.toString());
-			}
-			else {
-				recreateConfigFile();
-			}
+			recreateConfigFile();
 		}
-			
 		
-		settings = new Properties();
-		
-		
+		//encrypted and unencrypted handling
 		if(encrypted.equals("true")) { //create object for config file reading if encrypted
 			String result = "";
 			if(encryptionkey == null) {
@@ -93,10 +75,12 @@ public class DefaultStorage implements Plugin {
 				result = initconf.getProperty("EncryptionKey");
 			}
 			settings.load(decryptEncryptedFile(configfile, result));
+			configout = encryptEncryptedFile(configfile, result);
 		}
 		else {
 			settings.load(new FileInputStream(configfile));
 		}
+		propToConf("test", "encryptionkey");
 	}
 	
 	public void run() {
@@ -118,6 +102,11 @@ public class DefaultStorage implements Plugin {
 	}
 	
 	private void recreateInitFile() throws Exception {
+		boolean returned = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_YesNo,new MessageData("INIT config is missing! create new?")));
+		if(!returned) {
+			throw new Exception(ExType.File_Init_Notfound.toString());
+		}
+			
 		try {
 		      File confile = new File(initfile);
 		      confile.createNewFile();
@@ -134,22 +123,24 @@ public class DefaultStorage implements Plugin {
 		      
 		      initconf.store(fos,null);
 		      fos.close();
-		      System.out.println(initconf.get("configlocation"));
 		}
 		catch (Exception e) {
-			e.printStackTrace();
-			System.out.println(e);
-			throw new Exception(ExType.File_Init_Notfound.toString());
+			throw new Exception(ExType.File_Creation_Error.toString());
 		}
-		
 	}
 	
 	private void recreateConfigFile() throws Exception {
+		boolean returned = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_YesNo,new MessageData("Config File missing. Crete new?")));
+		if(!returned) {
+			throw new Exception(ExType.File_Config_Notfound.toString());
+		}
 		boolean encrypt = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_YesNo,new MessageData("Encrypt config file?")));
 		File yourfile = new File(configfile);
 		yourfile.createNewFile();
-		FileInputStream fileIn = new FileInputStream(configfile);
+		FileInputStream fis = new FileInputStream(configfile);
+		InputStream is = fis;
 		if(encrypt) {
+			//getting password and verifying if its the same
 			String passwd = (String)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_Input,new MessageData("Password for config file:")));
 			String passwd2 = (String)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_Input,new MessageData("Retype Password:")));
 			while(!passwd.equals(passwd2)) {
@@ -157,25 +148,33 @@ public class DefaultStorage implements Plugin {
 				passwd = (String)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_Input,new MessageData("Password for config file:")));
 				passwd2 = (String)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_Input,new MessageData("Retype Password:")));
 			}
+			
+			
 			//Key generation
 			String hashedPassword = hashPassword(passwd); 
 			SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256"); //got from https://www.baeldung.com/java-aes-encryption-decryption
 		    KeySpec spec = new PBEKeySpec(hashedPassword.toCharArray(), hashedPassword.getBytes(), 65536, 256);
 		    SecretKey secret = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES"); //TODO include encryption algorithm change
 		    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+		    
+		    
+		    //Cypher file geneartion
 		    try{
-				
-				byte[] fileIv = new byte[16];
-				fileIn.read(fileIv);
+		    	AlgorithmParameters params = cipher.getParameters();
+		    	
+				byte[] fileIv = params.getParameterSpec(IvParameterSpec.class).getIV();
 				cipher.init(Cipher.ENCRYPT_MODE, secret, new IvParameterSpec(fileIv));
-				CipherInputStream cipherIn = new CipherInputStream(fileIn, cipher);
+				CipherInputStream cipherIn = new CipherInputStream(fis, cipher);
+				is = cipherIn;
 			}
 			catch(Exception e) {
 				System.out.println(e);
 				e.printStackTrace();//TODO convert to throw exception if working
 			}
-		    
 		}
+		settings.load(is);
+		settings.setProperty("test", "configfile");
+		System.out.println(settings.getProperty("test"));
 	}
 	
 	private InputStream decryptEncryptedFile(String path, String hashedPassword) throws Exception{
@@ -203,6 +202,23 @@ public class DefaultStorage implements Plugin {
 		return null;
 	}
 	
+	private OutputStream encryptEncryptedFile(String path, String hashedPassword) throws Exception{
+		FileInputStream fis = new FileInputStream(configfile);
+		FileOutputStream fos = new FileOutputStream(configfile);
+		Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+		
+		SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256"); //got from https://www.baeldung.com/java-aes-encryption-decryption
+	    KeySpec spec = new PBEKeySpec(hashedPassword.toCharArray(), hashedPassword.getBytes(), 65536, 256);
+	    SecretKey secret = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES"); //TODO include encryption algorithm change
+	    
+		byte[] fileIv = new byte[16];
+        fis.read(fileIv);
+        cipher.init(Cipher.ENCRYPT_MODE, secret, new IvParameterSpec(fileIv));
+        CipherOutputStream  cipherIn = new CipherOutputStream(fos, cipher);
+        fis.close();
+        return cipherIn;
+	}
+	
 	private String hashPassword(String password) throws Exception {
 		String result = "";
 		byte[] encodedhash = null;
@@ -218,6 +234,12 @@ public class DefaultStorage implements Plugin {
 	    }
 	    result = hexString.toString();
 	    return result;
+	}
+	
+	private void propToConf(String property, String value) throws Exception {
+		settings.setProperty(property, value);
+		settings.store(configout, null);
+		
 	}
 	
 }
