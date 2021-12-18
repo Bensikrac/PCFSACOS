@@ -27,6 +27,7 @@ public class DefaultStorage implements Plugin {
 	private String configfile;
 	private PluginManager p;
 	private Properties settings; //for decrypted config file
+	private final String initfile = "init.conf";
 	
 	
 	public DefaultStorage(PluginManager pluginManager) {
@@ -45,7 +46,7 @@ public class DefaultStorage implements Plugin {
 	
 	public void load() throws Exception {
 		//First get config file location from programm location
-		Path initpath = Path.of("init.conf");
+		Path initpath = Path.of(initfile);
 		boolean exists = Files.exists(initpath);
 		if(!exists) {
 			boolean returned = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_YesNo,new MessageData("INIT config is missing! create new?")));
@@ -59,8 +60,8 @@ public class DefaultStorage implements Plugin {
 		
 		//now read encryption and decrypt file
 		Properties initconf = new Properties(); //properties object (property = value in file parser)
-		FileInputStream fis = new FileInputStream("init.conf");
-		FileOutputStream fos = new FileOutputStream("init.conf");
+		FileInputStream fis = new FileInputStream(initfile);
+		
 		initconf.load(fis);
 		
 		configfile = initconf.getProperty("configlocation"); //read settings
@@ -96,13 +97,6 @@ public class DefaultStorage implements Plugin {
 		else {
 			settings.load(new FileInputStream(configfile));
 		}
-		settings.setProperty("test", "true");
-		initconf.setProperty("test", "adsfhjkashf");
-		System.out.println(initconf.getProperty("test"));
-		initconf.store(fos, "");
-		
-		System.out.println(settings.getProperty("test")); // TODO remove test settigns
-		
 	}
 	
 	public void run() {
@@ -125,11 +119,11 @@ public class DefaultStorage implements Plugin {
 	
 	private void recreateInitFile() throws Exception {
 		try {
-		      File confile = new File("init.conf");
+		      File confile = new File(initfile);
 		      confile.createNewFile();
 		      //whacky copy paste code do not understand really 
-		      FileInputStream fis = new FileInputStream("init.conf");
-		      FileOutputStream fos = new FileOutputStream("init.conf");
+		      FileInputStream fis = new FileInputStream(initfile);
+		      FileOutputStream fos = new FileOutputStream(initfile);
 		      Properties initconf = new Properties();
 		      initconf.load(fis);
 		      // TODO maybe read default values from file or copy original file to this file
@@ -138,12 +132,9 @@ public class DefaultStorage implements Plugin {
 		      initconf.setProperty("encrypted", "false");
 		      initconf.setProperty("encryptionkey", "");
 		      
-		      Writer out = new BufferedWriter(new OutputStreamWriter(fos, "UTF-8"));
-		      
-		      initconf.store(out,null);
-		      out.flush();
-		      out.close();
+		      initconf.store(fos,null);
 		      fos.close();
+		      System.out.println(initconf.get("configlocation"));
 		}
 		catch (Exception e) {
 			e.printStackTrace();
