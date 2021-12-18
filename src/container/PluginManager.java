@@ -14,17 +14,17 @@ public class PluginManager { //Manage Plugins load unload error messages interpl
 		return list;
 	}
 	
-	public Plugin getPlugin(String Pluginname) throws Exception{
+	public Plugin getPlugin(String pluginname) throws Exception{
 		boolean found = false;
 		Plugin pfound = null;
 		for(Plugin p : list) {
-			if(p.getName().equals(Pluginname)) {
+			if(p.getName().equals(pluginname)) {
 				pfound = p;
 				found = true;
 			}
 		}
 		if(!found) {
-			throw new Exception(ExType.Plugin_Notfound.toString()); //if not found in case of default plugins something is wrong.
+			throw new Exception(ExType.Plugin_Notfound.toString()+ pluginname); //if not found in case of default plugins something is wrong.
 		}
 		return pfound;
 	}

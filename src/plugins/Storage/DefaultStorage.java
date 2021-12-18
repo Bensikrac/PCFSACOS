@@ -1,6 +1,11 @@
 package plugins.Storage;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,22 +48,9 @@ public class DefaultStorage implements Plugin {
 		Path initpath = Path.of("init.conf");
 		boolean exists = Files.exists(initpath);
 		if(!exists) {
-			boolean returned = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("Default_UI"),MsgContent.UI_Popout_YesNo,new MessageData("INIT config is missing! create new?")));
+			boolean returned = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_YesNo,new MessageData("INIT config is missing! create new?")));
 			if(returned) {
-				try {
-				      new File("init.conf"); //whacky copy paste code do not understand really 
-				      FileInputStream fis = new FileInputStream("init.conf");
-				      Properties initconf = new Properties();
-				      initconf.load(fis);
-				      // TODO maybe read default values from file or copy original file to this file
-				      //now setting default values
-				      initconf.setProperty("configlocation", "config.conf");
-				      initconf.setProperty("encrypted", "false");
-				      initconf.setProperty("encryptionkey", "");
-				}
-				catch (Exception e) {
-					throw new Exception(ExType.File_Init_Notfound.toString());
-				}
+				this.recreateInitFile();
 			}
 			else {
 				throw new Exception(ExType.File_Init_Notfound.toString());
@@ -68,6 +60,7 @@ public class DefaultStorage implements Plugin {
 		//now read encryption and decrypt file
 		Properties initconf = new Properties(); //properties object (property = value in file parser)
 		FileInputStream fis = new FileInputStream("init.conf");
+		FileOutputStream fos = new FileOutputStream("init.conf");
 		initconf.load(fis);
 		
 		configfile = initconf.getProperty("configlocation"); //read settings
@@ -76,63 +69,40 @@ public class DefaultStorage implements Plugin {
 		
 		exists = Files.exists(Path.of(configfile)); //check if config file is there
 		if(!exists) { 
-			throw new Exception(ExType.File_Config_Notfound.toString());
+			boolean returned = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_YesNo,new MessageData("Config File missing. Crete new?")));
+			if(!returned) {
+				throw new Exception(ExType.File_Config_Notfound.toString());
+			}
+			else {
+				recreateConfigFile();
+			}
 		}
+			
 		
-		
+		settings = new Properties();
 		
 		
 		if(encrypted.equals("true")) { //create object for config file reading if encrypted
 			String result = "";
 			if(encryptionkey == null) {
-				byte[] encodedhash = null;
 				String returned = (String)p.sendMessage(new Message(MsgType.Request, this, p.getPlugin("UI_Default"), MsgContent.UI_Popout_Input, new MessageData("Enter Your Password")));
-				MessageDigest digest = MessageDigest.getInstance("SHA-256");
-				encodedhash = digest.digest(returned.getBytes(StandardCharsets.UTF_8));
-				StringBuilder hexString = new StringBuilder(2 * encodedhash.length); //copied from https://www.baeldung.com/sha-256-hashing-java
-			    for (int i = 0; i < encodedhash.length; i++) {
-			        String hex = Integer.toHexString(0xff & encodedhash[i]);
-			        if(hex.length() == 1) {
-			            hexString.append('0'); 
-			        }
-			        hexString.append(hex);
-			    }
-			    result = hexString.toString();
+				result = hashPassword(returned);
 			}
 			else {
 				result = initconf.getProperty("EncryptionKey");
 			}
-			
-			
-			SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256"); //got from https://www.baeldung.com/java-aes-encryption-decryption
-		    KeySpec spec = new PBEKeySpec(result.toCharArray(), result.getBytes(), 65536, 256);
-		    SecretKey secret = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES"); //TODO include encryption algorithm change
-		    
-		    byte[] iv = new byte[16];
-		    SecureRandom secure = new SecureRandom();
-		    secure.nextBytes(iv);
-		    
-		    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-			
-			try{
-				FileInputStream fileIn = new FileInputStream(configfile);
-				byte[] fileIv = new byte[16];
-				fileIn.read(fileIv);
-				cipher.init(Cipher.DECRYPT_MODE, secret, new IvParameterSpec(fileIv));
-				CipherInputStream cipherIn = new CipherInputStream(fileIn, cipher);
-				settings = new Properties();
-				settings.load(cipherIn);
-			}
-			catch(Exception e) {
-				System.out.println(e);
-			}
+			settings.load(decryptEncryptedFile(configfile, result));
 		}
 		else {
-			settings = new Properties();
 			settings.load(new FileInputStream(configfile));
 		}
-		System.out.println(settings.getProperty("test"));
 		settings.setProperty("test", "true");
+		initconf.setProperty("test", "adsfhjkashf");
+		System.out.println(initconf.getProperty("test"));
+		initconf.store(fos, "");
+		
+		System.out.println(settings.getProperty("test")); // TODO remove test settigns
+		
 	}
 	
 	public void run() {
@@ -152,4 +122,111 @@ public class DefaultStorage implements Plugin {
 		// TODO Auto-generated method stub
 		return false;
 	}
+	
+	private void recreateInitFile() throws Exception {
+		try {
+		      File confile = new File("init.conf");
+		      confile.createNewFile();
+		      //whacky copy paste code do not understand really 
+		      FileInputStream fis = new FileInputStream("init.conf");
+		      FileOutputStream fos = new FileOutputStream("init.conf");
+		      Properties initconf = new Properties();
+		      initconf.load(fis);
+		      // TODO maybe read default values from file or copy original file to this file
+		      //now setting default values
+		      initconf.setProperty("configlocation", "config.conf");
+		      initconf.setProperty("encrypted", "false");
+		      initconf.setProperty("encryptionkey", "");
+		      
+		      Writer out = new BufferedWriter(new OutputStreamWriter(fos, "UTF-8"));
+		      
+		      initconf.store(out,null);
+		      out.flush();
+		      out.close();
+		      fos.close();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			System.out.println(e);
+			throw new Exception(ExType.File_Init_Notfound.toString());
+		}
+		
+	}
+	
+	private void recreateConfigFile() throws Exception {
+		boolean encrypt = (Boolean)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_YesNo,new MessageData("Encrypt config file?")));
+		File yourfile = new File(configfile);
+		yourfile.createNewFile();
+		FileInputStream fileIn = new FileInputStream(configfile);
+		if(encrypt) {
+			String passwd = (String)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_Input,new MessageData("Password for config file:")));
+			String passwd2 = (String)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_Input,new MessageData("Retype Password:")));
+			while(!passwd.equals(passwd2)) {
+				p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_Error,new MessageData("Passwords don't match. Please try again")));
+				passwd = (String)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_Input,new MessageData("Password for config file:")));
+				passwd2 = (String)p.sendMessage(new Message(MsgType.Request,this, p.getPlugin("UI_Default"),MsgContent.UI_Popout_Input,new MessageData("Retype Password:")));
+			}
+			//Key generation
+			String hashedPassword = hashPassword(passwd); 
+			SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256"); //got from https://www.baeldung.com/java-aes-encryption-decryption
+		    KeySpec spec = new PBEKeySpec(hashedPassword.toCharArray(), hashedPassword.getBytes(), 65536, 256);
+		    SecretKey secret = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES"); //TODO include encryption algorithm change
+		    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+		    try{
+				
+				byte[] fileIv = new byte[16];
+				fileIn.read(fileIv);
+				cipher.init(Cipher.ENCRYPT_MODE, secret, new IvParameterSpec(fileIv));
+				CipherInputStream cipherIn = new CipherInputStream(fileIn, cipher);
+			}
+			catch(Exception e) {
+				System.out.println(e);
+				e.printStackTrace();//TODO convert to throw exception if working
+			}
+		    
+		}
+	}
+	
+	private InputStream decryptEncryptedFile(String path, String hashedPassword) throws Exception{
+		SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256"); //got from https://www.baeldung.com/java-aes-encryption-decryption
+	    KeySpec spec = new PBEKeySpec(hashedPassword.toCharArray(), hashedPassword.getBytes(), 65536, 256);
+	    SecretKey secret = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES"); //TODO include encryption algorithm change
+	    
+	    //byte[] iv = new byte[16];
+	    //SecureRandom secure = new SecureRandom();
+	    //secure.nextBytes(iv); do you even need this or is this decryption only
+	    
+	    Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+		
+		try{
+			FileInputStream fileIn = new FileInputStream(configfile);
+			byte[] fileIv = new byte[16];
+			fileIn.read(fileIv);
+			cipher.init(Cipher.DECRYPT_MODE, secret, new IvParameterSpec(fileIv));
+			CipherInputStream cipherIn = new CipherInputStream(fileIn, cipher);
+			return cipherIn;
+		}
+		catch(Exception e) {
+			System.out.println(e); //TODO convert to throw exception if working
+		}
+		return null;
+	}
+	
+	private String hashPassword(String password) throws Exception {
+		String result = "";
+		byte[] encodedhash = null;
+		MessageDigest digest = MessageDigest.getInstance("SHA-256");
+		encodedhash = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+		StringBuilder hexString = new StringBuilder(2 * encodedhash.length); //copied from https://www.baeldung.com/sha-256-hashing-java
+	    for (int i = 0; i < encodedhash.length; i++) {
+	        String hex = Integer.toHexString(0xff & encodedhash[i]);
+	        if(hex.length() == 1) {
+	            hexString.append('0'); 
+	        }
+	        hexString.append(hex);
+	    }
+	    result = hexString.toString();
+	    return result;
+	}
+	
 }

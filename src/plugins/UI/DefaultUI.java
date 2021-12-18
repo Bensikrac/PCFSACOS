@@ -89,7 +89,7 @@ public class DefaultUI implements Plugin {
 				String input =JOptionPane.showInputDialog(null,m.getDataObject().getData());
 				return input; //return popout data
 			case UI_Popout_YesNo:
-				int n = JOptionPane.showConfirmDialog(null, "Confirm?",(String)m.getDataObject().getData(), JOptionPane.YES_NO_OPTION);
+				int n = JOptionPane.showConfirmDialog(null, (String)m.getDataObject().getData(), "Confirm?",JOptionPane.YES_NO_OPTION);
 				boolean mdata = false;
 				if(n == JOptionPane.YES_OPTION) {
 					mdata = true;
