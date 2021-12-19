@@ -30,6 +30,7 @@ public class Main {
 		}
 		catch(Exception e1) {
 			System.out.println(e1);
+			e1.printStackTrace();
 		}
 		
 		
